@@ -1,21 +1,14 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # Avoid interactive prompts during installation layers
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Install base system utilities and networking hooks
+# 1. Install base system utilities, networking hooks, and Java 21 (matches spark-base-312)
 RUN apt-get update && \
-    apt-get install -y procps curl wget tar && \
+    apt-get install -y procps curl wget tar openjdk-21-jre-headless && \
     rm -rf /var/lib/apt/lists/*
 
-# 2. Download and unpack a rock-solid, pre-compiled Java 8 (OpenJDK 8) runtime binary
-RUN wget -q https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u412-b08/OpenJDK8U-jdk_x64_linux_hotspot_8u412b08.tar.gz && \
-    tar -xzf OpenJDK8U-jdk_x64_linux_hotspot_8u412b08.tar.gz -C /opt/ && \
-    ln -s /opt/jdk8u412-b08 /opt/java && \
-    rm OpenJDK8U-jdk_x64_linux_hotspot_8u412b08.tar.gz
-
-# Establish exact Java 8 Environment mapping definitions globally
-ENV JAVA_HOME=/opt/java
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 ENV PATH=$JAVA_HOME/bin:$PATH
 
 # 3. Install a lightweight Hadoop client frame (FAST CDN MIRROR)
@@ -54,9 +47,9 @@ ENV HBASE_HOME=/opt/hbase
 ENV HIVE_CONF_DIR=/opt/spark-apps/infra/hadoop_config
 ENV PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PIG_HOME/bin:$HIVE_HOME/bin:$HBASE_HOME/bin
 
-# 7. Install the pure Python gateway drivers (Upgraded PySpark to align with your Python 3.12 nodes!)
+# 7. Install the pure Python gateway drivers (must match spark-base-312 exactly)
 RUN pip install --no-cache-dir \
-    pyspark==3.5.0 \
+    pyspark==3.5.1 \
     hdfs \
     thrift \
     jaydebeapi

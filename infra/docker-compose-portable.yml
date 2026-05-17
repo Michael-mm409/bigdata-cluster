@@ -35,6 +35,7 @@ services:
       - HBASE_CONF_hbase_zookeeper_quorum=zookeeper
       - HBASE_CONF_hbase_cluster_distributed=true
       - HBASE_CONF_hbase_zookeeper_property_clientPort=2181
+      - HBASE_HEAPSIZE=2048
 
   # --- SQL CATALOG (HIVE) ---
   hive-metastore-db:
@@ -122,8 +123,8 @@ services:
       - spark-master
     environment:
       - SPARK_MASTER=spark://spark-master:7077
-      - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_CORES=4
+      - SPARK_WORKER_MEMORY=4g
     volumes:
       - ..:/opt/spark-apps
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]

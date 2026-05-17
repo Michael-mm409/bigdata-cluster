@@ -2,13 +2,11 @@ from pyspark.sql import SparkSession
 import random
 import time
 
-# 1. Initialize Spark Session pointing to your local Master
-# The Master will then distribute the work to the Desktop Worker (.4)
+# 1. Initialize Spark Session optimized for container constraints
 spark = SparkSession.builder \
     .appName("MDS-Desktop-Direct-Run") \
-    .master("spark://192.168.8.10:7077") \
-    .config("spark.driver.host", "192.168.8.4") \
-    .config("spark.driver.bindAddress", "0.0.0.0") \
+    .master("spark://spark-master:7077") \
+    .config("spark.driver.host", "bigdata-workbench") \
     .getOrCreate()
     
 def inside(p):

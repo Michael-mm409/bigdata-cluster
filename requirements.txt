@@ -1,10 +1,14 @@
 # --- Spark / Hadoop ---
-pyspark==3.5.0
+pyspark==3.5.1
 hdfs
 
 # --- Hive (JDBC + Thrift) ---
 thrift==0.16.0
-PyHive[hive]
+PyHive
+pure-sasl
+thrift_sasl
+future
+python-dateutil
 jaydebeapi
 JPype1
 
