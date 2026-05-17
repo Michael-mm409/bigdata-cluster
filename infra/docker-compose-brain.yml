@@ -14,7 +14,9 @@ services:
     ports:
       - "2181:2181"
     networks:
-      - bigdata-net
+      bigdata-net:
+        aliases:
+          - zookeeper # ◄ Allows hbase to find it just as 'zookeeper'
     deploy:
       placement:
         constraints: [node.role == manager]
@@ -23,7 +25,7 @@ services:
   hbase-master:
     image: bde2020/hbase-master:1.0.0-hbase1.2.6
     environment:
-      - HBASE_CONF_hbase_rootdir=hdfs://namenode:9000/hbase  # ◄ Swarm Named Routing!
+      - HBASE_CONF_hbase_rootdir=hdfs://my-cluster_namenode:9000/hbase  # ◄ Fixed
       - HBASE_CONF_hbase_zookeeper_quorum=zookeeper
     ports:
       - "16010:16010" 
@@ -49,7 +51,7 @@ services:
   hive-metastore:
     image: bde2020/hive:2.3.2
     environment:
-      - HIVE_SITE_CONF_javax_jdo_option_ConnectionURL=jdbc:postgresql://hive-metastore-db:5432/metastore_db
+      - HIVE_SITE_CONF_javax_jdo_option_ConnectionURL=jdbc:postgresql://my-cluster_hive-metastore-db:5432/metastore_db # ◄ Fixed
     networks:
       - bigdata-net
     deploy:
@@ -65,17 +67,19 @@ services:
     environment:
       - CLUSTER_NAME=michael_cluster
       - ENSURE_NAMENODE_DIR=/hadoop/dfs/name
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000              # ◄ Pure named routing
+      - CORE_CONF_fs_defaultFS=hdfs://my-cluster_namenode:9000              # ◄ Fixed
     volumes:
       - namenode_data:/hadoop/dfs/name
     networks:
-      - bigdata-net
+      bigdata-net:
+        aliases:
+          - namenode # ◄ Let's standard internal configs find it via shortcut
     deploy:
       resources:
         limits:
           memory: 2g
       placement:
-        constraints: [node.role == manager]                      # ◄ Indentation fixed
+        constraints: [node.role == manager]
 
   # YARN RESOURCE MANAGER (The brain of Hadoop processing)
   resourcemanager:
@@ -83,7 +87,7 @@ services:
     ports:
       - "8088:8088" 
     environment:
-      - SERVICE_PRECONDITION=namenode:9870
+      - SERVICE_PRECONDITION=my-cluster_namenode:9870 # ◄ Fixed target to full Swarm service name
     networks:
       - bigdata-net
     deploy:
@@ -103,14 +107,16 @@ services:
       - "8080:8080"
       - "6066:6066"
     environment:
-      - SPARK_MASTER_HOST=spark-master                           # ◄ Routes via container name
+      - SPARK_MASTER_HOST=my-cluster_spark-master # ◄ Fixed
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
       - SPARK_MASTER_OPTS=-Dspark.master.bindAddress=0.0.0.0 -Dspark.master.rest.enabled=true -Dspark.master.rest.port=6066
     volumes:
       - ..:/opt/spark-apps
     networks:
-      - bigdata-net
+      bigdata-net:
+        aliases:
+          - spark-master
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
     deploy:
       placement:
@@ -128,14 +134,16 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:9093'
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
       KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'     # ◄ Changed from IP to Name!
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://my-cluster_kafka:9092'     # ◄ Fixed
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
     networks:
-      - bigdata-net
+      bigdata-net:
+        aliases:
+          - kafka
     deploy:
       resources:
         limits:
