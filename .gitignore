@@ -9,4 +9,4 @@
 # Ignore compiled python artifacts and models
 **/__pycache__/
 *.pkl
-big-data-stack/model_artifacts/
+ml/model_artifacts/
