@@ -1,0 +1,25 @@
+# --- Spark / Hadoop ---
+pyspark==3.5.0
+hdfs
+
+# --- Hive (JDBC + Thrift) ---
+thrift==0.16.0
+PyHive[hive]
+jaydebeapi
+JPype1
+
+# --- HBase ---
+happybase
+
+# --- Kafka ---
+confluent-kafka
+
+# --- Data / ML ---
+pandas
+numpy
+scikit-learn
+sqlalchemy
+
+# --- Jupyter ---
+jupyterlab
+ipykernel
