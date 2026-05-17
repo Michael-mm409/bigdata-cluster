@@ -10,20 +10,23 @@ volumes:
 
 services:
   bigdata-workbench:
-    build:
-      context: ../apps/bigdata-workbench
-    container_name: bigdata-workbench
-    restart: unless-stopped
-    depends_on:
-      - namenode
-      - hive-metastore
-    volumes:
-      - ..:/opt/spark-apps
-    environment:
-      - HADOOP_CONF_DIR=/opt/spark-apps/infra/hadoop_config
-    networks:
-      - bigdata-net
-
+      build:
+        context: ../apps/bigdata-workbench
+      container_name: bigdata-workbench
+      restart: unless-stopped
+      ports:
+        - "4040:4040"                                              # ◄ Maps the interactive PySpark UI to your desktop
+        - "4041:4041"                                              # ◄ Extra backup slot just in case you run a second session
+      depends_on:
+        - namenode
+        - hive-metastore
+      volumes:
+        - ..:/opt/spark-apps
+      environment:
+        - HADOOP_CONF_DIR=/opt/spark-apps/infra/hadoop_config
+      networks:
+        - bigdata-net
+        
   # --- COORDINATION ---
   zookeeper:
     image: zookeeper:3.8
