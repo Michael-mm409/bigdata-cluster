@@ -1,0 +1,119 @@
+services:
+  # --- COORDINATION ---
+  zookeeper:
+    image: zookeeper:3.8
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+
+  # --- NOSQL (HBASE) ---
+  hbase-master:
+    image: bde2020/hbase-master:1.0.0-hbase1.2.6
+    container_name: hbase-master
+    depends_on:
+      - zookeeper
+    environment:
+      - HBASE_CONF_hbase_rootdir=hdfs://192.168.8.10:9000/hbase
+      - HBASE_CONF_hbase_zookeeper_quorum=zookeeper
+    ports:
+      - "16010:16010" # HBase Web UI
+
+  # --- SQL CATALOG (HIVE) ---
+  hive-metastore-db:
+    image: postgres:13
+    container_name: hive-metastore-db
+    environment:
+      - POSTGRES_DB=metastore_db
+      - POSTGRES_USER=hive
+      - POSTGRES_PASSWORD=hive
+
+  hive-metastore:
+    image: bde2020/hive:2.3.2
+    container_name: hive-metastore
+    depends_on:
+      - hive-metastore-db
+    environment:
+      - HIVE_SITE_CONF_javax_jdo_option_ConnectionURL=jdbc:postgresql://hive-metastore-db:5432/metastore_db
+  # HADOOP NAMENODE (The brain of HDFS)
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    restart: unless-stopped
+    ports:
+      - "9870:9870" # HDFS Web UI
+      - "9000:9000" # HDFS Data Port
+    environment:
+      - CLUSTER_NAME=michael_cluster
+      - ENSURE_NAMENODE_DIR=/hadoop/dfs/name
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  # YARN RESOURCE MANAGER (The brain of Hadoop processing)
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    restart: unless-stopped
+    ports:
+      - "8088:8088" # YARN Web UI
+    environment:
+      - SERVICE_PRECONDITION=namenode:9870
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  # SPARK MASTER (Direct Network Mode)
+  spark-master:
+    build:
+        context: ./spark-base-312
+    image: mds-spark:3.12
+    container_name: spark-master
+    # This removes the need for 'ports' mapping and 'BindException' issues
+    network_mode: "host"
+    restart: unless-stopped
+    environment:
+      - SPARK_LOCAL_IP=192.168.8.10
+      - SPARK_LOCAL_HOSTNAME=192.168.8.10
+      - SPARK_MASTER_HOST=192.168.8.10
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - SPARK_MASTER_OPTS=-Dspark.master.bindAddress=0.0.0.0 -Dspark.master.rest.enabled=true -Dspark.master.rest.port=6066
+    volumes:
+      - .:/opt/spark-apps
+    command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+
+
+  # KAFKA BROKER & CONTROLLER (KRaft Mode)
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka-master
+    restart: unless-stopped
+    ports:
+      - "9092:9092" # External traffic (from your Desktop)
+      - "9093:9093" # Controller traffic
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'controller,broker'
+      # ADD THIS LINE:
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:9093'
+      # ADD THIS LINE (The Cluster ID):
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://192.168.8.10:9092'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      # Initial RAM limit for Java
+      KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+volumes:
+  namenode_data:
