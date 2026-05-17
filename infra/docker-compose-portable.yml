@@ -1,16 +1,16 @@
 services:
   bigdata-workbench:
     build:
-      context: ./bigdata-workbench
+      context: ../apps/bigdata-workbench
     container_name: bigdata-workbench
     restart: unless-stopped
     depends_on:
       - namenode
       - hive-metastore
     volumes:
-      - .:/opt/spark-apps
+      - ..:/opt/spark-apps
     environment:
-      - HADOOP_CONF_DIR=/opt/spark-apps/hadoop_config
+      - HADOOP_CONF_DIR=/opt/spark-apps/infra/hadoop_config
 
   # --- COORDINATION ---
   zookeeper:
@@ -71,17 +71,17 @@ services:
       - CORE_CONF_fs_defaultFS=hdfs://0.0.0.0:9000
     volumes:
       - namenode_data:/hadoop/dfs/name
-      - .:/opt/cluster-workspace  # <--- Mounts your main folder
-      - .:/opt/spark-apps
+      - ..:/opt/cluster-workspace
+      - ..:/opt/spark-apps
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
         # Automatically build the client configuration mapping directory
-        mkdir -p /opt/cluster-workspace/hadoop_config
+        mkdir -p /opt/cluster-workspace/infra/hadoop_config
 
         # Inject the XML files directly into the shared mount
-        echo '<?xml version="1.0"?><configuration><property><name>fs.defaultFS</name><value>hdfs://namenode:9000</value></property></configuration>' > /opt/cluster-workspace/hadoop_config/core-site.xml
-        echo '<?xml version="1.0"?><configuration><property><name>dfs.replication</name><value>1</value></property></configuration>' > /opt/cluster-workspace/hadoop_config/hdfs-site.xml
+        echo '<?xml version="1.0"?><configuration><property><name>fs.defaultFS</name><value>hdfs://namenode:9000</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/core-site.xml
+        echo '<?xml version="1.0"?><configuration><property><name>dfs.replication</name><value>1</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/hdfs-site.xml
 
         # Hand off control back to the image's original entrypoint handlers
         /entrypoint.sh /run.sh
@@ -111,7 +111,7 @@ services:
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
     volumes:
-      - .:/opt/spark-apps
+      - ..:/opt/spark-apps
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
 
   spark-worker:
@@ -125,7 +125,7 @@ services:
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_MEMORY=2g
     volumes:
-      - .:/opt/spark-apps
+      - ..:/opt/spark-apps
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
 
   # --- KAFKA STREAMING ---

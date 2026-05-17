@@ -69,7 +69,7 @@ services:
   # SPARK MASTER (Direct Network Mode)
   spark-master:
     build:
-        context: ./spark-base-312
+        context: ../apps/spark-base-312
     image: mds-spark:3.12
     container_name: spark-master
     # This removes the need for 'ports' mapping and 'BindException' issues
@@ -83,7 +83,7 @@ services:
       - SPARK_MASTER_WEBUI_PORT=8080
       - SPARK_MASTER_OPTS=-Dspark.master.bindAddress=0.0.0.0 -Dspark.master.rest.enabled=true -Dspark.master.rest.port=6066
     volumes:
-      - .:/opt/spark-apps
+      - ..:/opt/spark-apps
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
 
 

@@ -13,10 +13,10 @@ services:
       - SPARK_LOCAL_HOSTNAME=192.168.8.4
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      - SPARK_WORKER_OPTS=-Dspark.worker.resource.gpu.amount=1 -Dspark.worker.resource.gpu.discoveryScript=/opt/spark-apps/getGpusResources.sh
+      - SPARK_WORKER_OPTS=-Dspark.worker.resource.gpu.amount=1 -Dspark.worker.resource.gpu.discoveryScript=/opt/spark-apps/infra/getGpusResources.sh
     gpus: all
     volumes:
-      - .:/opt/spark-apps
+      - ..:/opt/spark-apps
     command:
       [
         "/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class",
@@ -26,7 +26,7 @@ services:
 
   stream-processor:
     container_name: stream-worker
-    build: ./streaming-app
+    build: ../apps/streaming-app
     network_mode: host # Switched to host mode so it can route to Kafka natively
     environment:
       - KAFKA_BROKER=192.168.8.10:9092

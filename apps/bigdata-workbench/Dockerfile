@@ -51,7 +51,7 @@ ENV HADOOP_HOME=/opt/hadoop-${HADOOP_VERSION}
 ENV PIG_HOME=/opt/pig
 ENV HIVE_HOME=/opt/hive
 ENV HBASE_HOME=/opt/hbase
-ENV HIVE_CONF_DIR=/opt/spark-apps/hadoop_config
+ENV HIVE_CONF_DIR=/opt/spark-apps/infra/hadoop_config
 ENV PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PIG_HOME/bin:$HIVE_HOME/bin:$HBASE_HOME/bin
 
 # 7. Install the pure Python gateway drivers (Upgraded PySpark to align with your Python 3.12 nodes!)
