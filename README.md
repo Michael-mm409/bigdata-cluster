@@ -30,10 +30,10 @@ git clone <repo-url> && cd Big-Data-Cluster
 cp .env.example .env && nano .env
 
 # 3. Fire up the full cluster (one command)
-chmod +x start-cluster.sh && ./start-cluster.sh
+chmod +x infra/start-cluster.sh && ./infra/start-cluster.sh
 ```
 
-`start-cluster.sh` will:
+`infra/start-cluster.sh` will:
 1. Verify SSH connectivity to the Mini PC
 2. Deploy the **Brain services** (NameNode, Spark Master, Kafka, HBase, Hive, ZooKeeper) to the Mini PC via remote Docker context
 3. Wait 12 seconds for core services to stabilize
@@ -47,10 +47,10 @@ No Mini PC needed. Everything runs on one machine using loopback addresses.
 
 ```bash
 # Build the custom Spark base image first
-docker build -t mds-spark:3.12 ./spark-base-312
+docker build -t mds-spark:3.12 ./apps/spark-base-312
 
 # Spin up the full stack on one machine
-docker compose -f docker-compose-portable.yml up -d --build
+docker compose -f infra/docker-compose-portable.yml up -d --build
 ```
 
 ---
@@ -59,11 +59,11 @@ docker compose -f docker-compose-portable.yml up -d --build
 
 ```bash
 # Distributed mode
-docker --context minipc compose -f docker-compose-brain.yml down
-docker compose -f desktop-worker-compose.yml down
+docker --context minipc compose -f infra/docker-compose-brain.yml down
+docker compose -f infra/desktop-worker-compose.yml down
 
 # Portable mode
-docker compose -f docker-compose-portable.yml down
+docker compose -f infra/docker-compose-portable.yml down
 ```
 
 ---
@@ -72,8 +72,8 @@ docker compose -f docker-compose-portable.yml down
 
 | Mode | When to use | Compose file(s) |
 |---|---|---|
-| **Distributed** | Mini PC is on the network as `minipc` Docker context | `docker-compose-brain.yml` + `desktop-worker-compose.yml` |
-| **Portable** | Single machine, laptop, or local dev | `docker-compose-portable.yml` |
+| **Distributed** | Mini PC is on the network as `minipc` Docker context | `infra/docker-compose-brain.yml` + `infra/desktop-worker-compose.yml` |
+| **Portable** | Single machine, laptop, or local dev | `infra/docker-compose-portable.yml` |
 
 Switch between modes by just changing which compose file you target — no code changes needed.
 
@@ -84,34 +84,45 @@ Switch between modes by just changing which compose file you target — no code 
 ```
 Big-Data-Cluster/
 │
-├── docker-compose-brain.yml      # Brain: NameNode, Spark Master, Kafka, HBase, Hive, ZooKeeper
-├── desktop-worker-compose.yml    # Workers: Spark Worker (GPU), DataNode, Stream Processor
-├── docker-compose-portable.yml   # All-in-one: full stack on a single machine
+├── apps/                              # Containerised application images
+│   ├── bigdata-workbench/             #   Dev shell: Pig, Hive client, Python tooling
+│   ├── spark-base-312/                #   Custom Spark 3.x base image (Python 3.12 + PySpark)
+│   └── streaming-app/                 #   Real-time Kafka stream processor
 │
-├── .env                          # Your local IP config (gitignored)
-├── .env.example                  # Safe template — copy this to .env
+├── courses/                           # University coursework (machine-specific symlinks gitignored)
+│   ├── ISIT312/                       #   Big Data (prior course)
+│   └── CSC6002 → <your local path>    #   Big Data Management — symlink, see below
 │
-├── spark-base-312/               # Custom Spark 3.x base image (Python 3.12 + PySpark)
-│   └── Dockerfile
+├── infra/                             # Cluster infrastructure
+│   ├── docker-compose-brain.yml       #   Brain: NameNode, Spark Master, Kafka, HBase, Hive, ZooKeeper
+│   ├── desktop-worker-compose.yml     #   Workers: Spark Worker (GPU), DataNode, Stream Processor
+│   ├── docker-compose-portable.yml    #   All-in-one: full stack on a single machine
+│   ├── hadoop_config/                 #   HDFS XML configs shared via volume mount
+│   ├── hadoop_data/                   #   DataNode block storage (runtime, gitignored)
+│   ├── start-cluster.sh               #   One-shot distributed cluster launcher
+│   ├── check_cluster.sh               #   Live health report: containers, resources, connectivity
+│   ├── cluster_benchmark.py           #   Performance benchmarking suite
+│   ├── getGpusResources.sh            #   GPU discovery script for Spark resource scheduling
+│   └── hive-jdbc-client.jar           #   Hive JDBC driver for external client connections
 │
-├── bigdata-workbench/            # Dev container: Pig, Hive client, Python tooling
-│   └── Dockerfile
+├── ml/                                # Machine learning experiments
+│   ├── train_subject_grade_model.py   #   Postgres-backed subject grade classifier
+│   └── model_artifacts/               #   Trained model outputs (pkl, metadata — gitignored)
 │
-├── streaming-app/                # Real-time Kafka stream processor
-│   ├── Dockerfile
-│   └── processor.py
-│
-├── hadoop_config/                # HDFS XML configs shared via volume mount
-│   ├── core-site.xml             #   → fs.defaultFS pointer
-│   └── hdfs-site.xml             #   → replication factor
-│
-├── model_artifacts/              # Trained ML model outputs (pkl, metadata, predictions)
-│
-├── start-cluster.sh              # One-shot distributed cluster launcher
-├── check_cluster.sh              # Live health report: containers, resources, connectivity
-├── cluster_benchmark.py          # Performance benchmarking suite
-├── getGpusResources.sh           # GPU discovery script for Spark resource scheduling
-└── train_subject_grade_model.py  # Example: Postgres-backed ML classifier
+├── .env.example                       # Safe IP/config template — copy to .env
+└── README.md
+```
+
+### Setting up the `courses/CSC6002` symlink
+
+The CSC6002 folder lives in a different location on each machine and is gitignored. Create the symlink once after cloning:
+
+```bash
+# Desktop (example path)
+ln -s "/mnt/Data/University/USQ/Masters of Data Science/Year 1/Trimester 2/CSC6002 - Big Data Management" courses/CSC6002
+
+# Laptop (adjust path to match where your files actually are)
+ln -s "/path/to/CSC6002 - Big Data Management" courses/CSC6002
 ```
 
 ### Service Map
@@ -235,15 +246,15 @@ All UIs are accessible from your browser once the cluster is running. In **distr
 
 | Script | What it does |
 |---|---|
-| `./start-cluster.sh` | Full distributed launch: SSH to Mini PC → deploy brain → deploy workers |
-| `./check_cluster.sh` | Live health snapshot: container status, CPU/memory usage, Mini PC reachability |
-| `python cluster_benchmark.py` | Runs a performance benchmark suite against the running cluster |
-| `./getGpusResources.sh` | GPU resource discovery script — used internally by the Spark worker |
+| `./infra/start-cluster.sh` | Full distributed launch: SSH to Mini PC → deploy brain → deploy workers |
+| `./infra/check_cluster.sh` | Live health snapshot: container status, CPU/memory usage, Mini PC reachability |
+| `python infra/cluster_benchmark.py` | Runs a performance benchmark suite against the running cluster |
+| `./infra/getGpusResources.sh` | GPU resource discovery script — used internally by the Spark worker |
 
 ### Health Check
 
 ```bash
-./check_cluster.sh
+./infra/check_cluster.sh
 ```
 
 ```
