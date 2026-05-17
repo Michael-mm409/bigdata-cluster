@@ -1,0 +1,12 @@
+# Ignore local environment credentials
+.env
+
+# Ignore large raw assignment datasets
+*.csv
+*.tsv
+*.json
+
+# Ignore compiled python artifacts and models
+**/__pycache__/
+*.pkl
+big-data-stack/model_artifacts/
