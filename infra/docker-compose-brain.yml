@@ -1,120 +1,144 @@
+version: '3.8'
+
+networks:
+  bigdata-net:
+    external: true
+
+volumes:
+  namenode_data:
+
 services:
   # --- COORDINATION ---
   zookeeper:
     image: zookeeper:3.8
-    container_name: zookeeper
     ports:
       - "2181:2181"
+    networks:
+      - bigdata-net
+    deploy:
+      placement:
+        constraints: [node.role == manager]
 
   # --- NOSQL (HBASE) ---
   hbase-master:
     image: bde2020/hbase-master:1.0.0-hbase1.2.6
-    container_name: hbase-master
-    depends_on:
-      - zookeeper
     environment:
-      - HBASE_CONF_hbase_rootdir=hdfs://192.168.8.10:9000/hbase
+      - HBASE_CONF_hbase_rootdir=hdfs://namenode:9000/hbase  # ◄ Swarm Named Routing!
       - HBASE_CONF_hbase_zookeeper_quorum=zookeeper
     ports:
-      - "16010:16010" # HBase Web UI
+      - "16010:16010" 
+    networks:
+      - bigdata-net
+    deploy:
+      placement:
+        constraints: [node.role == manager]
 
   # --- SQL CATALOG (HIVE) ---
   hive-metastore-db:
     image: postgres:13
-    container_name: hive-metastore-db
     environment:
       - POSTGRES_DB=metastore_db
       - POSTGRES_USER=hive
       - POSTGRES_PASSWORD=hive
+    networks:
+      - bigdata-net
+    deploy:
+      placement:
+        constraints: [node.role == manager]
 
   hive-metastore:
     image: bde2020/hive:2.3.2
-    container_name: hive-metastore
-    depends_on:
-      - hive-metastore-db
     environment:
       - HIVE_SITE_CONF_javax_jdo_option_ConnectionURL=jdbc:postgresql://hive-metastore-db:5432/metastore_db
+    networks:
+      - bigdata-net
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
   # HADOOP NAMENODE (The brain of HDFS)
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    container_name: namenode
-    restart: unless-stopped
     ports:
-      - "9870:9870" # HDFS Web UI
-      - "9000:9000" # HDFS Data Port
+      - "9870:9870" 
+      - "9000:9000" 
     environment:
       - CLUSTER_NAME=michael_cluster
       - ENSURE_NAMENODE_DIR=/hadoop/dfs/name
-      - CORE_CONF_fs_defaultFS=hdfs://192.168.8.10:9000
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000              # ◄ Pure named routing
     volumes:
       - namenode_data:/hadoop/dfs/name
+    networks:
+      - bigdata-net
     deploy:
       resources:
         limits:
           memory: 2g
+      placement:
+        constraints: [node.role == manager]                      # ◄ Indentation fixed
 
   # YARN RESOURCE MANAGER (The brain of Hadoop processing)
   resourcemanager:
     image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
-    container_name: resourcemanager
-    restart: unless-stopped
     ports:
-      - "8088:8088" # YARN Web UI
+      - "8088:8088" 
     environment:
       - SERVICE_PRECONDITION=namenode:9870
+    networks:
+      - bigdata-net
     deploy:
       resources:
         limits:
           memory: 2g
+      placement:
+        constraints: [node.role == manager]
 
-  # SPARK MASTER (Direct Network Mode)
+  # SPARK MASTER (Migrated out of host mode to Overlay)
   spark-master:
     build:
         context: ../apps/spark-base-312
     image: mds-spark:3.12
-    container_name: spark-master
-    # This removes the need for 'ports' mapping and 'BindException' issues
-    network_mode: "host"
-    restart: unless-stopped
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+      - "6066:6066"
     environment:
-      - SPARK_LOCAL_IP=192.168.8.10
-      - SPARK_LOCAL_HOSTNAME=192.168.8.10
-      - SPARK_MASTER_HOST=192.168.8.10
+      - SPARK_MASTER_HOST=spark-master                           # ◄ Routes via container name
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
       - SPARK_MASTER_OPTS=-Dspark.master.bindAddress=0.0.0.0 -Dspark.master.rest.enabled=true -Dspark.master.rest.port=6066
     volumes:
       - ..:/opt/spark-apps
+    networks:
+      - bigdata-net
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
-
+    deploy:
+      placement:
+        constraints: [node.role == manager]
 
   # KAFKA BROKER & CONTROLLER (KRaft Mode)
   kafka:
     image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka-master
-    restart: unless-stopped
     ports:
-      - "9092:9092" # External traffic (from your Desktop)
-      - "9093:9093" # Controller traffic
+      - "9092:9092" 
+      - "9093:9093" 
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: 'controller,broker'
-      # ADD THIS LINE:
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:9093'
-      # ADD THIS LINE (The Cluster ID):
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
       KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://192.168.8.10:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'     # ◄ Changed from IP to Name!
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      # Initial RAM limit for Java
       KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
+    networks:
+      - bigdata-net
     deploy:
       resources:
         limits:
           memory: 2g
-
-volumes:
-  namenode_data:
+      placement:
+        constraints: [node.role == manager]
