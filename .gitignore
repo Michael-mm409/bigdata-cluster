@@ -1,6 +1,9 @@
 # Ignore local environment credentials
 .env
 
+# Machine-specific course symlinks
+courses/CSC6002
+
 # Ignore large raw assignment datasets
 *.csv
 *.tsv
