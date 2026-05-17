@@ -1,4 +1,15 @@
 services:
+  bigdata-workbench:
+    build:
+      context: ../apps/bigdata-workbench
+    container_name: bigdata-workbench
+    restart: unless-stopped
+    network_mode: host            # Crucial so it sees the 192.168.8.10 network natively
+    volumes:
+      - /home/michael/Big-Data-Cluster:/opt/spark-apps
+    environment:
+      - HADOOP_CONF_DIR=/opt/spark-apps/infra/hadoop_config
+
   spark-worker:
     image: mds-spark:3.12
     container_name: spark-worker
@@ -16,7 +27,7 @@ services:
       - SPARK_WORKER_OPTS=-Dspark.worker.resource.gpu.amount=1 -Dspark.worker.resource.gpu.discoveryScript=/opt/spark-apps/infra/getGpusResources.sh
     gpus: all
     volumes:
-      - ..:/opt/spark-apps
+      - /home/michael/Big-Data-Cluster:/opt/spark-apps
     command:
       [
         "/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class",
@@ -40,4 +51,4 @@ services:
       - SERVICE_PRECONDITION=192.168.8.10:9870 # Points to NameNode Web UI
       - CORE_CONF_fs_defaultFS=hdfs://192.168.8.10:9000
     volumes:
-      - ./hadoop_data:/hadoop/dfs/data
+      - /home/michael/Big-Data-Cluster/infra/hadoop_data:/hadoop/dfs/data
