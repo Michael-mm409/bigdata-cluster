@@ -1,3 +1,13 @@
+version: '3.8'
+
+networks:
+  bigdata-net:
+    driver: bridge
+
+volumes:
+  namenode_data:
+  datanode_data:
+
 services:
   bigdata-workbench:
     build:
@@ -11,6 +21,8 @@ services:
       - ..:/opt/spark-apps
     environment:
       - HADOOP_CONF_DIR=/opt/spark-apps/infra/hadoop_config
+    networks:
+      - bigdata-net
 
   # --- COORDINATION ---
   zookeeper:
@@ -19,6 +31,8 @@ services:
     restart: unless-stopped
     ports:
       - "2181:2181"
+    networks:
+      - bigdata-net
 
   # --- NOSQL (HBASE) ---
   hbase-master:
@@ -35,7 +49,9 @@ services:
       - HBASE_CONF_hbase_zookeeper_quorum=zookeeper
       - HBASE_CONF_hbase_cluster_distributed=true
       - HBASE_CONF_hbase_zookeeper_property_clientPort=2181
-      - HBASE_HEAPSIZE=2048
+      - HBASE_HEAPSIZE=1024                                      # ◄ Scaled down slightly to safe single-host levels
+    networks:
+      - bigdata-net
 
   # --- SQL CATALOG (HIVE) ---
   hive-metastore-db:
@@ -46,6 +62,8 @@ services:
       - POSTGRES_DB=metastore_db
       - POSTGRES_USER=hive
       - POSTGRES_PASSWORD=hive
+    networks:
+      - bigdata-net
 
   hive-metastore:
     image: bde2020/hive:2.3.2
@@ -57,6 +75,8 @@ services:
       - "9083:9083"
     environment:
       - HIVE_SITE_CONF_javax_jdo_option_ConnectionURL=jdbc:postgresql://hive-metastore-db:5432/metastore_db
+    networks:
+      - bigdata-net
 
   # --- HADOOP STORAGE ---
   namenode:
@@ -74,17 +94,14 @@ services:
       - namenode_data:/hadoop/dfs/name
       - ..:/opt/cluster-workspace
       - ..:/opt/spark-apps
+    networks:
+      - bigdata-net
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
-        # Automatically build the client configuration mapping directory
         mkdir -p /opt/cluster-workspace/infra/hadoop_config
-
-        # Inject the XML files directly into the shared mount
         echo '<?xml version="1.0"?><configuration><property><name>fs.defaultFS</name><value>hdfs://namenode:9000</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/core-site.xml
         echo '<?xml version="1.0"?><configuration><property><name>dfs.replication</name><value>1</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/hdfs-site.xml
-
-        # Hand off control back to the image's original entrypoint handlers
         /entrypoint.sh /run.sh
 
   datanode:
@@ -98,6 +115,8 @@ services:
       - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
     volumes:
       - datanode_data:/hadoop/dfs/data
+    networks:
+      - bigdata-net
 
   # --- SPARK PROCESSING ---
   spark-master:
@@ -111,8 +130,11 @@ services:
       - SPARK_MASTER_HOST=spark-master
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
+      - SPARK_LOCAL_IP=0.0.0.0                                   # ◄ Added single-host bind assurance
     volumes:
       - ..:/opt/spark-apps
+    networks:
+      - bigdata-net
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
 
   spark-worker:
@@ -127,6 +149,8 @@ services:
       - SPARK_WORKER_MEMORY=4g
     volumes:
       - ..:/opt/spark-apps
+    networks:
+      - bigdata-net
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
 
   # --- KAFKA STREAMING ---
@@ -142,9 +166,8 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:9093'
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
       KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'     # ◄ Patched from localhost to container network alias
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-
-volumes:
-  namenode_data:
-  datanode_data:
+      KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"                       # ◄ Safety memory limiter for single-host environment
+    networks:
+      - bigdata-net
