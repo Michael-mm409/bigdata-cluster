@@ -8,7 +8,7 @@ volumes:
 services:
   # --- COURSE REQUIRED: MONGODB DATA TIER ---
   mongodb:
-    image: mongo:8.0
+    image: mongo:7.0
     container_name: course-mongodb
     restart: unless-stopped
     ports:
@@ -23,6 +23,9 @@ services:
     image: mds-spark:3.12
     container_name: spark-master
     restart: unless-stopped
+    build:
+      context: ../apps/spark-base-312
+      dockerfile: Dockerfile
     ports:
       - "7077:7077"
       - "8085:8080"
@@ -43,6 +46,9 @@ services:
     restart: unless-stopped
     depends_on:
       - spark-master
+    build:
+      context: ../apps/spark-base-312
+      dockerfile: Dockerfile
     environment:
       - SPARK_MASTER=spark://spark-master:7077
       - SPARK_WORKER_CORES=4
@@ -67,7 +73,7 @@ services:
       - CORE_CONF_fs_defaultFS=hdfs://0.0.0.0:9000
     volumes:
       - namenode_data:/hadoop/dfs/name
-      - ..:/opt/cluster-workspace
+      - ../:/opt/cluster-workspace
     networks:
       - bigdata-net
     entrypoint: ["/bin/bash", "-c"]
