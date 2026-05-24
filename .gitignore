@@ -13,3 +13,10 @@ courses/CSC6002
 **/__pycache__/
 *.pkl
 ml/model_artifacts/
+
+# Local course database and cluster storage blocks
+infra/mongo_data/
+infra/hadoop_data_local/
+infra/hadoop_data/
+infra/hadoop_config/
+.docker-compose.yml.kate-swp
