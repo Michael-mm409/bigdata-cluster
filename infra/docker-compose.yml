@@ -1,0 +1,93 @@
+networks:
+  bigdata-net:
+    driver: bridge
+
+volumes:
+  namenode_data:
+
+services:
+  # --- COURSE REQUIRED: MONGODB DATA TIER ---
+  mongodb:
+    image: mongo:6.0
+    container_name: course-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - /home/michael/Big-Data-Cluster/infra/mongo_data:/data/db
+    networks:
+      - bigdata-net
+
+  # --- COURSE ALIGNED: SPARK LAB PROCESSING ---
+  spark-master:
+    image: mds-spark:3.12
+    container_name: spark-master
+    restart: unless-stopped
+    ports:
+      - "7077:7077"
+      - "8085:8080"
+    environment:
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - SPARK_LOCAL_IP=0.0.0.0
+    volumes:
+      - ..:/opt/spark-apps
+    networks:
+      - bigdata-net
+    command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+
+  spark-worker:
+    image: mds-spark:3.12
+    container_name: spark-worker
+    restart: unless-stopped
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=4
+      - SPARK_WORKER_MEMORY=4g
+    volumes:
+      - ..:/opt/spark-apps
+    networks:
+      - bigdata-net
+    command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+
+  # --- OPTIONAL STORAGE LAYER (HADOOP CORE) ---
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    restart: unless-stopped
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    environment:
+      - CLUSTER_NAME=michael_cluster
+      - ENSURE_NAMENODE_DIR=/hadoop/dfs/name
+      - CORE_CONF_fs_defaultFS=hdfs://0.0.0.0:9000
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+      - ..:/opt/cluster-workspace
+    networks:
+      - bigdata-net
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        mkdir -p /opt/cluster-workspace/infra/hadoop_config
+        echo '<?xml version="1.0"?><configuration><property><name>fs.defaultFS</name><value>hdfs://namenode:9000</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/core-site.xml
+        echo '<?xml version="1.0"?><configuration><property><name>dfs.replication</name><value>1</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/hdfs-site.xml
+        /entrypoint.sh /run.sh
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    restart: unless-stopped
+    depends_on:
+      - namenode
+    environment:
+      - SERVICE_PRECONDITION=namenode:9870
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    volumes:
+      - /home/michael/Big-Data-Cluster/infra/hadoop_data_local:/hadoop/dfs/data
+    networks:
+      - bigdata-net
