@@ -8,13 +8,13 @@ volumes:
 services:
   # --- COURSE REQUIRED: MONGODB DATA TIER ---
   mongodb:
-    image: mongo:6.0
+    image: mongo:8.0
     container_name: course-mongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
-      - /home/michael/Big-Data-Cluster/infra/mongo_data:/data/db
+      - ${HOME}/Big-Data-Cluster/infra/mongo_data:/data/db
     networks:
       - bigdata-net
 
@@ -32,7 +32,7 @@ services:
       - SPARK_MASTER_WEBUI_PORT=8080
       - SPARK_LOCAL_IP=0.0.0.0
     volumes:
-      - ..:/opt/spark-apps
+      - ../:/opt/spark-apps
     networks:
       - bigdata-net
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
@@ -48,7 +48,7 @@ services:
       - SPARK_WORKER_CORES=4
       - SPARK_WORKER_MEMORY=4g
     volumes:
-      - ..:/opt/spark-apps
+      - ../:/opt/spark-apps
     networks:
       - bigdata-net
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
@@ -88,6 +88,6 @@ services:
       - SERVICE_PRECONDITION=namenode:9870
       - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
     volumes:
-      - /home/michael/Big-Data-Cluster/infra/hadoop_data_local:/hadoop/dfs/data
+      - ${HOME}/Big-Data-Cluster/infra/hadoop_data_local:/hadoop/dfs/data
     networks:
       - bigdata-net
