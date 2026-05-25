@@ -31,7 +31,7 @@ echo -e "\n${YELLOW}[3/4] Pulling isolated cluster images from Docker Hub...${NC
 # Pulling the core containers referenced in your portable compose configuration
 docker pull bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
 docker pull bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-docker pull mongo:6.0
+docker pull mongo:7.0
 
 # Note on the custom PySpark base image
 if docker image inspect mds-spark:3.12 &> /dev/null; then
