@@ -20,3 +20,6 @@ infra/hadoop_data_local/
 infra/hadoop_data/
 infra/hadoop_config/
 .docker-compose.yml.kate-swp
+
+data/
+!data/mongo_coursework.json
