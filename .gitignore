@@ -21,5 +21,10 @@ infra/hadoop_data/
 infra/hadoop_config/
 .docker-compose.yml.kate-swp
 
-data/
+# Ignore the data directory contents, but allow Git to look inside the folder itself
+data/*
 !data/mongo_coursework.json
+
+# Whitelist your new automated database collection dumps folder
+!data/mongodb_dumps/
+!data/mongodb_dumps/*
