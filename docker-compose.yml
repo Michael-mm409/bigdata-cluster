@@ -27,22 +27,22 @@ services:
       context: ../apps/spark-base-312
       dockerfile: Dockerfile
     ports:
-      - "7077:7077"
       - "8085:8080"
+      - "7077:7077"
     environment:
       - SPARK_MASTER_HOST=spark-master
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
       - SPARK_LOCAL_IP=0.0.0.0
-    volumes:
-      - ../:/opt/spark-apps
     networks:
       - bigdata-net
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+    volumes:
+      # 🚀 Dynamic mapping: works on any computer by reading a local variable
+      - "${COURSE_WORKSPACE}:/opt/spark-apps/"
 
   spark-worker:
-    image: mds-spark:3.12
-    container_name: spark-worker
+    # container_name: spark-worker  <-- Keep this commented out so you can scale!
     restart: unless-stopped
     depends_on:
       - spark-master
@@ -53,11 +53,21 @@ services:
       - SPARK_MASTER=spark://spark-master:7077
       - SPARK_WORKER_CORES=4
       - SPARK_WORKER_MEMORY=4g
-    volumes:
-      - ../:/opt/spark-apps
     networks:
       - bigdata-net
+    deploy:
+      replicas: 2 # 🚀 AUTOMATICALLY SPAWNS 2 WORKERS ON BOTH MACHINES
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4g
+        reservations:
+          cpus: '2.0'
+          memory: 2g
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+    volumes:
+      # 🚀 Dynamic mapping: works on any computer by reading a local variable
+      - "${COURSE_WORKSPACE}:/opt/spark-apps/"
 
   # --- OPTIONAL STORAGE LAYER (HADOOP CORE) ---
   namenode:
