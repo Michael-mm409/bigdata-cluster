@@ -1,5 +1,6 @@
 # Ignore local environment credentials
 .env
+!.env.example
 
 # Machine-specific course symlinks
 courses/CSC6002
@@ -13,6 +14,11 @@ courses/CSC6002
 **/__pycache__/
 *.pkl
 ml/model_artifacts/
+
+# Editor temporary swap files
+*.swp
+*~
+.*.swp
 
 # Local course database and cluster storage blocks
 infra/mongo_data/

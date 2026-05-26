@@ -6,7 +6,6 @@ alias hadoop="docker exec -i namenode hadoop"
 alias pyspark="docker exec -it spark-master pyspark"
 alias spark-submit="docker exec -it spark-master spark-submit"
 
-unalias mongosh 2>/dev/null
 mongosh() {
     local db_name="${1:-uni_sandbox}"
     docker exec -it course-mongodb mongosh "$db_name"

@@ -32,14 +32,26 @@ pull_and_seed() {
 
     # --- MONGO SEED SECTION ---
     if [ -f "$DATA_DIR/mongo_coursework.json" ]; then
-        echo "📥 Seeding MongoDB with tracked datasets..."
-        docker exec -i course-mongodb mongoimport \
-            --db uni_sandbox \
-            --collection assignments \
-            --drop \
-            --jsonArray < "$DATA_DIR/mongo_coursework.json"
-    else
-        echo "ℹ️ No MongoDB seed file found in data/. Skipping import."
+       	echo "📥 Seeding MongoDB with tracked datasets..."
+       	DB_NAME="uni_sandbox"
+       	EXPORT_DIR="$SCRIPT_DIR/../data/mongodb_dumps"
+       	
+       	if [ -d "$EXPORT_DIR" ] && [ "$(ls -A "$EXPORT_DIR" 2>/dev/null)" ]; then
+       	    for FILE in "$EXPORT_DIR"/*.json; do
+       	        [ -e "$FILE" ] || continue
+       	        COLLECTION=$(basename "$FILE" .json)
+       	        
+       	        # Guard rail: Skip empty arrays or placeholder metadata tracking files
+       	        if [ ! -s "$FILE" ] || [ "$(cat "$FILE" | tr -d '[:space:]')" = "[]" ] || [ "$COLLECTION" = ".gitkeep" ]; then
+       	            echo "   -> Collection '$COLLECTION' is empty or metadata. Skipping import."
+       	        else
+       	            echo "   -> Importing collection: $COLLECTION"
+       	            docker exec -i course-mongodb mongoimport --db="$DB_NAME" --collection="$COLLECTION" --jsonArray --drop < "$FILE"
+       	        fi
+       	    done
+       	else
+       	    echo "ℹ No local MongoDB dump files found to import. Skipping seed."
+       	fi
     fi
 
     # --- HADOOP HDFS SEED SECTION ---
@@ -63,12 +75,27 @@ export_and_push() {
     echo "🚀 Ensuring Docker containers are running to perform export..."
     docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d
 
-    # --- MONGO EXPORT SECTION ---
     echo "📤 Exporting active MongoDB collections..."
-    docker exec -i course-mongodb mongoexport \
-        --db uni_sandbox \
-        --collection assignments \
-        --jsonArray > "$DATA_DIR/mongo_coursework.json"
+    DB_NAME="uni_sandbox"
+    EXPORT_DIR="$SCRIPT_DIR/../data/mongodb_dumps"
+    
+    # Ensure clean snapshot destination exists
+    mkdir -p "$EXPORT_DIR"
+    
+    # Dynamically fetch all collections active inside the database
+    COLLECTIONS=$(docker exec -i course-mongodb mongosh "$DB_NAME" --quiet --eval "db.getCollectionNames().join(' ')")
+    
+    if [ -z "$COLLECTIONS" ] || [ "$COLLECTIONS" = "" ]; then
+        echo "ℹ No active collections found in database '$DB_NAME' to export."
+    else
+        for COLLECTION in $COLLECTIONS; do
+            # Filter out system and tracking files
+            [[ "$COLLECTION" =~ system\..* ]] && continue
+            
+            echo "   -> Exporting collection: $COLLECTION"
+            docker exec -i course-mongodb mongoexport --db="$DB_NAME" --collection="$COLLECTION" --jsonArray > "$EXPORT_DIR/$COLLECTION.json"
+        done
+    fi
 
     # --- HADOOP HDFS EXPORT SECTION ---
     echo "📤 Extracting all structured data out of the Hadoop HDFS layer..."
