@@ -24,7 +24,7 @@ services:
     container_name: spark-master
     restart: unless-stopped
     build:
-      context: ../apps/spark-base-312
+      context: ./apps/spark-base-312
       dockerfile: Dockerfile
     ports:
       - "8085:8080"
@@ -47,12 +47,12 @@ services:
     depends_on:
       - spark-master
     build:
-      context: ../apps/spark-base-312
+      context: ./apps/spark-base-312
       dockerfile: Dockerfile
     environment:
       - SPARK_MASTER=spark://spark-master:7077
       - SPARK_WORKER_CORES=4
-      - SPARK_WORKER_MEMORY=4g
+      - SPARK_WORKER_MEMORY=5g
     networks:
       - bigdata-net
     deploy:
@@ -60,7 +60,7 @@ services:
       resources:
         limits:
           cpus: '4.0'
-          memory: 4g
+          memory: 5g
         reservations:
           cpus: '2.0'
           memory: 2g
