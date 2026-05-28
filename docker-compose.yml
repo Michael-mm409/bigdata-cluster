@@ -52,7 +52,7 @@ services:
     environment:
       - SPARK_MASTER=spark://spark-master:7077
       - SPARK_WORKER_CORES=4
-      - SPARK_WORKER_MEMORY=5g
+      - SPARK_WORKER_MEMORY=${WORKER_RAM}
     networks:
       - bigdata-net
     deploy:
@@ -60,7 +60,7 @@ services:
       resources:
         limits:
           cpus: '4.0'
-          memory: 5g
+          memory: ${WORKER_RAM}
         reservations:
           cpus: '2.0'
           memory: 2g
