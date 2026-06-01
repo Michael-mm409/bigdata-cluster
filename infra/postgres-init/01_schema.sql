@@ -28,7 +28,7 @@ CREATE TABLE patients (
 );
 
 CREATE TABLE organizations (
-    id TEXT,
+    id TEXT PRIMARY KEY,
     name TEXT,
     address TEXT,
     city TEXT,
@@ -42,7 +42,7 @@ CREATE TABLE organizations (
 );
 
 CREATE TABLE payers (
-    id TEXT,
+    id TEXT PRIMARY KEY,
     name TEXT,
     address TEXT,
     city TEXT,
@@ -66,8 +66,8 @@ CREATE TABLE payers (
 );
 
 CREATE TABLE providers (
-    id TEXT,
-    organization TEXT,
+    id TEXT PRIMARY KEY,
+    organization TEXT REFERENCES organizations(id),
     name TEXT,
     gender TEXT,
     speciality TEXT,
@@ -84,10 +84,10 @@ CREATE TABLE encounters (
     id TEXT PRIMARY KEY,
     start TIMESTAMPTZ,
     stop TIMESTAMPTZ,
-    patient TEXT,
-    organization TEXT,
-    provider TEXT,
-    payer TEXT,
+    patient TEXT NOT NULL REFERENCES patients(id),
+    organization TEXT REFERENCES organizations(id),
+    provider TEXT REFERENCES providers(id),
+    payer TEXT REFERENCES payers(id),
     encounterclass TEXT,
     code TEXT,
     description TEXT,
@@ -101,8 +101,8 @@ CREATE TABLE encounters (
 CREATE TABLE conditions (
     start DATE,
     stop DATE,
-    patient TEXT,
-    encounter TEXT,
+    patient TEXT NOT NULL REFERENCES patients(id),
+    encounter TEXT NOT NULL REFERENCES encounters(id),
     code TEXT,
     description TEXT
 );
@@ -110,9 +110,9 @@ CREATE TABLE conditions (
 CREATE TABLE medications (
     start TIMESTAMPTZ,
     stop TIMESTAMPTZ,
-    patient TEXT,
-    payer TEXT,
-    encounter TEXT,
+    patient TEXT NOT NULL REFERENCES patients(id),
+    payer TEXT REFERENCES payers(id),
+    encounter TEXT NOT NULL REFERENCES encounters(id),
     code TEXT,
     description TEXT,
     base_cost NUMERIC,
@@ -126,8 +126,8 @@ CREATE TABLE medications (
 CREATE TABLE procedures (
     start TIMESTAMPTZ,
     stop TIMESTAMPTZ,
-    patient TEXT,
-    encounter TEXT,
+    patient TEXT NOT NULL REFERENCES patients(id),
+    encounter TEXT NOT NULL REFERENCES encounters(id),
     code TEXT,
     description TEXT,
     base_cost NUMERIC,
@@ -137,8 +137,8 @@ CREATE TABLE procedures (
 
 CREATE TABLE immunizations (
     date TIMESTAMPTZ,
-    patient TEXT,
-    encounter TEXT,
+    patient TEXT NOT NULL REFERENCES patients(id),
+    encounter TEXT NOT NULL REFERENCES encounters(id),
     code TEXT,
     description TEXT,
     base_cost NUMERIC
@@ -148,8 +148,8 @@ CREATE TABLE careplans (
     id TEXT,
     start DATE,
     stop DATE,
-    patient TEXT,
-    encounter TEXT,
+    patient TEXT NOT NULL REFERENCES patients(id),
+    encounter TEXT NOT NULL REFERENCES encounters(id),
     code TEXT,
     description TEXT,
     reasoncode TEXT,
@@ -159,8 +159,8 @@ CREATE TABLE careplans (
 CREATE TABLE allergies (
     start DATE,
     stop DATE,
-    patient TEXT,
-    encounter TEXT,
+    patient TEXT NOT NULL REFERENCES patients(id),
+    encounter TEXT NOT NULL REFERENCES encounters(id),
     code TEXT,
     system TEXT,
     description TEXT,
@@ -177,18 +177,19 @@ CREATE TABLE allergies (
 CREATE TABLE devices (
     start TIMESTAMPTZ,
     stop TIMESTAMPTZ,
-    patient TEXT,
-    encounter TEXT,
+    patient TEXT NOT NULL REFERENCES patients(id),
+    encounter TEXT NOT NULL REFERENCES encounters(id),
     code TEXT,
     description TEXT,
     udi TEXT
 );
 
+-- instance_uid is a DICOM SOP Instance UID — globally unique per image instance
 CREATE TABLE imaging_studies (
     id TEXT,
     date TIMESTAMPTZ,
-    patient TEXT,
-    encounter TEXT,
+    patient TEXT NOT NULL REFERENCES patients(id),
+    encounter TEXT NOT NULL REFERENCES encounters(id),
     series_uid TEXT,
     bodysite_code TEXT,
     bodysite_description TEXT,
@@ -202,20 +203,20 @@ CREATE TABLE imaging_studies (
 
 CREATE TABLE supplies (
     date TIMESTAMPTZ,
-    patient TEXT,
-    encounter TEXT,
+    patient TEXT NOT NULL REFERENCES patients(id),
+    encounter TEXT NOT NULL REFERENCES encounters(id),
     code TEXT,
     description TEXT,
     quantity INTEGER
 );
 
 CREATE TABLE payer_transitions (
-    patient TEXT,
+    patient TEXT NOT NULL REFERENCES patients(id),
     memberid TEXT,
     start_year TIMESTAMPTZ,
     end_year TIMESTAMPTZ,
-    payer TEXT,
-    secondary_payer TEXT,
+    payer TEXT REFERENCES payers(id),
+    secondary_payer TEXT REFERENCES payers(id),
     ownership TEXT,
     ownername TEXT
 );
@@ -233,11 +234,11 @@ CREATE INDEX ON careplans (patient);
 CREATE INDEX ON allergies (patient);
 
 CREATE TABLE claims (
-    id TEXT,
-    patientid TEXT,
-    providerid TEXT,
-    primarypatientinsuranceid TEXT,
-    secondarypatientinsuranceid TEXT,
+    id TEXT PRIMARY KEY,
+    patientid TEXT NOT NULL REFERENCES patients(id),
+    providerid TEXT REFERENCES providers(id),
+    primarypatientinsuranceid TEXT REFERENCES payers(id),
+    secondarypatientinsuranceid TEXT REFERENCES payers(id),
     departmentid TEXT,
     patientdepartmentid TEXT,
     diagnosis1 TEXT,
@@ -248,11 +249,11 @@ CREATE TABLE claims (
     diagnosis6 TEXT,
     diagnosis7 TEXT,
     diagnosis8 TEXT,
-    referringproviderid TEXT,
+    referringproviderid TEXT REFERENCES providers(id),
     appointmentid TEXT,
     currentillnessdate DATE,
     servicedate DATE,
-    supervisingproviderid TEXT,
+    supervisingproviderid TEXT REFERENCES providers(id),
     status1 TEXT,
     status2 TEXT,
     statusp TEXT,
