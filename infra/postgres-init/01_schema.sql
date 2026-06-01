@@ -220,6 +220,18 @@ CREATE TABLE payer_transitions (
     ownername TEXT
 );
 
+CREATE INDEX ON encounters (patient);
+CREATE INDEX ON encounters (provider);
+CREATE INDEX ON conditions (patient);
+CREATE INDEX ON conditions (encounter);
+CREATE INDEX ON medications (patient);
+CREATE INDEX ON medications (encounter);
+CREATE INDEX ON procedures (patient);
+CREATE INDEX ON procedures (encounter);
+CREATE INDEX ON immunizations (patient);
+CREATE INDEX ON careplans (patient);
+CREATE INDEX ON allergies (patient);
+
 CREATE TABLE claims (
     id TEXT,
     patientid TEXT,

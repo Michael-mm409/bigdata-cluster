@@ -22,6 +22,7 @@ ml/model_artifacts/
 
 # Local course database and cluster storage blocks
 infra/mongo_data/
+infra/postgres_data/
 infra/hadoop_data_local/
 infra/hadoop_data/
 infra/hadoop_config/
