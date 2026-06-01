@@ -28,7 +28,7 @@ CREATE TABLE patients (
 );
 
 CREATE TABLE organizations (
-    id TEXT PRIMARY KEY,
+    id TEXT,
     name TEXT,
     address TEXT,
     city TEXT,
@@ -42,7 +42,7 @@ CREATE TABLE organizations (
 );
 
 CREATE TABLE payers (
-    id TEXT PRIMARY KEY,
+    id TEXT,
     name TEXT,
     address TEXT,
     city TEXT,
@@ -66,7 +66,7 @@ CREATE TABLE payers (
 );
 
 CREATE TABLE providers (
-    id TEXT PRIMARY KEY,
+    id TEXT,
     organization TEXT,
     name TEXT,
     gender TEXT,
@@ -212,8 +212,8 @@ CREATE TABLE supplies (
 CREATE TABLE payer_transitions (
     patient TEXT,
     memberid TEXT,
-    start_year INTEGER,
-    end_year INTEGER,
+    start_year TIMESTAMPTZ,
+    end_year TIMESTAMPTZ,
     payer TEXT,
     secondary_payer TEXT,
     ownership TEXT,
@@ -221,7 +221,7 @@ CREATE TABLE payer_transitions (
 );
 
 CREATE TABLE claims (
-    id TEXT PRIMARY KEY,
+    id TEXT,
     patientid TEXT,
     providerid TEXT,
     primarypatientinsuranceid TEXT,
