@@ -1,0 +1,16 @@
+\copy patients FROM '/course/Assessments/csc6002_data1/data/csv/patients.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy organizations FROM '/course/Assessments/csc6002_data1/data/csv/organizations.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy payers FROM '/course/Assessments/csc6002_data1/data/csv/payers.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy providers FROM '/course/Assessments/csc6002_data1/data/csv/providers.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy encounters FROM '/course/Assessments/csc6002_data1/data/csv/encounters.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy conditions FROM '/course/Assessments/csc6002_data1/data/csv/conditions.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy medications FROM '/course/Assessments/csc6002_data1/data/csv/medications.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy procedures FROM '/course/Assessments/csc6002_data1/data/csv/procedures.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy immunizations FROM '/course/Assessments/csc6002_data1/data/csv/immunizations.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy careplans FROM '/course/Assessments/csc6002_data1/data/csv/careplans.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy allergies FROM '/course/Assessments/csc6002_data1/data/csv/allergies.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy devices FROM '/course/Assessments/csc6002_data1/data/csv/devices.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy imaging_studies FROM '/course/Assessments/csc6002_data1/data/csv/imaging_studies.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy supplies FROM '/course/Assessments/csc6002_data1/data/csv/supplies.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy payer_transitions FROM '/course/Assessments/csc6002_data1/data/csv/payer_transitions.csv' WITH (FORMAT csv, HEADER true, NULL '');
+\copy claims FROM '/course/Assessments/csc6002_data1/data/csv/claims.csv' WITH (FORMAT csv, HEADER true, NULL '');

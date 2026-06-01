@@ -6,6 +6,25 @@ volumes:
   namenode_data:
 
 services:
+  # --- COURSE REQUIRED: POSTGRESQL RELATIONAL DATA TIER ---
+  postgres:
+    image: postgres:16
+    container_name: course-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=csc6002
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${HOME}/Big-Data-Cluster/infra/postgres_data:/var/lib/postgresql/data
+      - ${COURSE_WORKSPACE}:/course:ro
+      - ./infra/postgres-init:/docker-entrypoint-initdb.d
+    command: postgres -c shared_buffers=512MB -c work_mem=64MB -c effective_cache_size=2GB
+    networks:
+      - bigdata-net
+
   # --- COURSE REQUIRED: MONGODB DATA TIER ---
   mongodb:
     image: mongo:7.0
@@ -39,7 +58,7 @@ services:
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
     volumes:
       # 🚀 Dynamic mapping: works on any computer by reading a local variable
-      - "${COURSE_WORKSPACE}:/opt/spark-apps/"
+      - "${COURSE_WORKSPACE}:/course/"
 
   spark-worker:
     # container_name: spark-worker  <-- Keep this commented out so you can scale!
@@ -67,7 +86,7 @@ services:
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
     volumes:
       # 🚀 Dynamic mapping: works on any computer by reading a local variable
-      - "${COURSE_WORKSPACE}:/opt/spark-apps/"
+      - "${COURSE_WORKSPACE}:/course/"
 
   # --- OPTIONAL STORAGE LAYER (HADOOP CORE) ---
   namenode:
