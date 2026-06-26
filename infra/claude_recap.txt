@@ -1,0 +1,2 @@
+❯ /recap
+  ⎿  Working on hardening the PostgreSQL Synthea database with constraints, deduplication, and cleanup. The docker-compose.yml was updated to increase shared memory — restart postgres then re-run VACUUM on the procedures table.
