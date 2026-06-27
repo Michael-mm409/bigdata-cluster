@@ -26,18 +26,6 @@ services:
     networks:
       - bigdata-net
 
-  # --- COURSE REQUIRED: MONGODB DATA TIER ---
-  mongodb:
-    image: mongo:7.0
-    container_name: course-mongodb
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - ${HOME}/Big-Data-Cluster/infra/mongo_data:/data/db
-    networks:
-      - bigdata-net
-
   # --- COURSE ALIGNED: SPARK LAB PROCESSING ---
   spark-master:
     image: mds-spark:3.12
@@ -54,6 +42,7 @@ services:
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
       - SPARK_LOCAL_IP=0.0.0.0
+      - MONGO_URI=${MONGO_URI} # 🔌 Dynamically passes the Mini PC or Portable URI
     networks:
       - bigdata-net
     command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
@@ -73,6 +62,7 @@ services:
       - SPARK_MASTER=spark://spark-master:7077
       - SPARK_WORKER_CORES=4
       - SPARK_WORKER_MEMORY=${WORKER_RAM}
+      - MONGO_URI=${MONGO_URI} # 🔌 Ensure the workers reading/writing data can see it too
     networks:
       - bigdata-net
     deploy:

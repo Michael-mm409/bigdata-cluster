@@ -29,7 +29,12 @@ RUN pip install --no-cache-dir \
     scipy \
     matplotlib \
     jupyterlab \
-    notebook
+    notebook \
+    pymongo
+
+# 🔌 SAFE BACKWARD-COMPATIBILITY FALLBACK
+# If Docker Compose doesn't feed a variable, it defaults to localhost
+ENV MONGO_URI="mongodb://localhost:27017/csc6002_lab"
 
 WORKDIR /opt/spark-apps
 

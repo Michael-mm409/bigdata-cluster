@@ -30,28 +30,30 @@ pull_and_seed() {
     echo "⏳ Waiting for databases and storage clusters to warm up..."
     sleep 5
 
-    # --- MONGO SEED SECTION ---
-    if [ -f "$DATA_DIR/mongo_coursework.json" ]; then
-       	echo "📥 Seeding MongoDB with tracked datasets..."
-       	DB_NAME="uni_sandbox"
-       	EXPORT_DIR="$SCRIPT_DIR/../data/mongodb_dumps"
-       	
-       	if [ -d "$EXPORT_DIR" ] && [ "$(ls -A "$EXPORT_DIR" 2>/dev/null)" ]; then
-       	    for FILE in "$EXPORT_DIR"/*.json; do
-       	        [ -e "$FILE" ] || continue
-       	        COLLECTION=$(basename "$FILE" .json)
-       	        
-       	        # Guard rail: Skip empty arrays or placeholder metadata tracking files
-       	        if [ ! -s "$FILE" ] || [ "$(cat "$FILE" | tr -d '[:space:]')" = "[]" ] || [ "$COLLECTION" = ".gitkeep" ]; then
-       	            echo "   -> Collection '$COLLECTION' is empty or metadata. Skipping import."
-       	        else
-       	            echo "   -> Importing collection: $COLLECTION"
-       	            docker exec -i course-mongodb mongoimport --db="$DB_NAME" --collection="$COLLECTION" --jsonArray --drop < "$FILE"
-       	        fi
-       	    done
-       	else
-       	    echo "ℹ No local MongoDB dump files found to import. Skipping seed."
-       	fi
+   # --- MONGO SEED SECTION ---
+    if [ -f "$DATA_DIR/mongo_coursework.json" ] || [ -d "$SCRIPT_DIR/../data/mongodb_dumps" ]; then
+        echo "📥 Seeding MongoDB on Mini PC with tracked datasets..."
+        EXPORT_DIR="$SCRIPT_DIR/../data/mongodb_dumps"
+
+        # Pull the URI passed from Docker Compose or the local environment
+        TARGET_URI="${MONGO_URI:-mongodb://localhost:27017/uni_sandbox}"
+
+        if [ -d "$EXPORT_DIR" ] && [ "$(ls -A "$EXPORT_DIR" 2>/dev/null)" ]; then
+            for FILE in "$EXPORT_DIR"/*.json; do
+                [ -e "$FILE" ] || continue
+                COLLECTION=$(basename "$FILE" .json)
+
+                if [ ! -s "$FILE" ] || [ "$(cat "$FILE" | tr -d '[:space:]')" = "[]" ] || [ "$COLLECTION" = ".gitkeep" ]; then
+                    echo "   -> Collection '$COLLECTION' is empty or metadata. Skipping import."
+                else
+                    echo "   -> Importing collection '$COLLECTION' to target database..."
+                    # 💡 FIX: Uses native mongoimport pointing directly to your configuration URI
+                    mongoimport --uri="$TARGET_URI" --collection="$COLLECTION" --jsonArray --drop < "$FILE"
+                fi
+            done
+        else
+            echo "ℹ No local MongoDB dump files found to import. Skipping seed."
+        fi
     fi
 
     # --- HADOOP HDFS SEED SECTION ---
@@ -76,24 +78,22 @@ export_and_push() {
     docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d
 
     echo "📤 Exporting active MongoDB collections..."
-    DB_NAME="uni_sandbox"
     EXPORT_DIR="$SCRIPT_DIR/../data/mongodb_dumps"
-    
-    # Ensure clean snapshot destination exists
     mkdir -p "$EXPORT_DIR"
-    
-    # Dynamically fetch all collections active inside the database
-    COLLECTIONS=$(docker exec -i course-mongodb mongosh "$DB_NAME" --quiet --eval "db.getCollectionNames().join(' ')")
-    
+
+    TARGET_URI="${MONGO_URI:-mongodb://localhost:27017/uni_sandbox}"
+
+    # 💡 FIX: Uses native mongosh and mongoexport against the network URI instead of local container exec
+    COLLECTIONS=$(mongosh "$TARGET_URI" --quiet --eval "db.getCollectionNames().join(' ')")
+
     if [ -z "$COLLECTIONS" ] || [ "$COLLECTIONS" = "" ]; then
-        echo "ℹ No active collections found in database '$DB_NAME' to export."
+        echo "ℹ No active collections found in target database to export."
     else
         for COLLECTION in $COLLECTIONS; do
-            # Filter out system and tracking files
             [[ "$COLLECTION" =~ system\..* ]] && continue
-            
+
             echo "   -> Exporting collection: $COLLECTION"
-            docker exec -i course-mongodb mongoexport --db="$DB_NAME" --collection="$COLLECTION" --jsonArray > "$EXPORT_DIR/$COLLECTION.json"
+            mongoexport --uri="$TARGET_URI" --collection="$COLLECTION" --jsonArray > "$EXPORT_DIR/$COLLECTION.json"
         done
     fi
 

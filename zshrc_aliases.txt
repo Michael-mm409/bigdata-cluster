@@ -7,8 +7,19 @@ alias pyspark="docker exec -it spark-master pyspark"
 alias spark-submit="docker exec -it spark-master spark-submit"
 
 mongosh() {
-    local db_name="${1:-uni_sandbox}"
-    docker exec -it course-mongodb mongosh "$db_name"
+    # 1. Safely extract the URI string inside the quotes using awk
+    local env_uri=$(awk -F'"' '/^MONGO_URI=/ {print $2}' ~/Big-Data-Cluster/.env)
+
+    # 2. Fallback if the .env file line isn't populated or commented out
+    local base_uri="${env_uri:-mongodb://localhost:27017/uni_sandbox}"
+
+    # 3. Allow passing a custom database name as an argument to override the trailing path
+    if [ -n "$1" ]; then
+        base_uri=$(echo "$base_uri" | sed -E "s|/[a-zA-Z0-9__-]+(\?.*)?$|/$1\1|")
+    fi
+
+    echo "🔌 Connecting to: $base_uri"
+    command mongosh "$base_uri"
 }
 
 cluster-up() {
