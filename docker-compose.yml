@@ -90,40 +90,40 @@ services:
       - "${COURSE_WORKSPACE}:/course/"
 
   # --- OPTIONAL STORAGE LAYER (HADOOP CORE) ---
-  namenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    container_name: namenode
-    restart: unless-stopped
-    ports:
-      - "9870:9870"
-      - "9000:9000"
-    environment:
-      - CLUSTER_NAME=michael_cluster
-      - ENSURE_NAMENODE_DIR=/hadoop/dfs/name
-      - CORE_CONF_fs_defaultFS=hdfs://0.0.0.0:9000
-    volumes:
-      - namenode_data:/hadoop/dfs/name
-      - ../:/opt/cluster-workspace
-    networks:
-      - bigdata-net
-    entrypoint: ["/bin/bash", "-c"]
-    command:
-      - |
-        mkdir -p /opt/cluster-workspace/infra/hadoop_config
-        echo '<?xml version="1.0"?><configuration><property><name>fs.defaultFS</name><value>hdfs://namenode:9000</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/core-site.xml
-        echo '<?xml version="1.0"?><configuration><property><name>dfs.replication</name><value>1</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/hdfs-site.xml
-        /entrypoint.sh /run.sh
-
-  datanode:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode
-    restart: unless-stopped
-    depends_on:
-      - namenode
-    environment:
-      - SERVICE_PRECONDITION=namenode:9870
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-    volumes:
-      - ${HOME}/Big-Data-Cluster/infra/hadoop_data_local:/hadoop/dfs/data
-    networks:
-      - bigdata-net
+#   namenode:
+#     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+#     container_name: namenode
+#     restart: unless-stopped
+#     ports:
+#       - "9870:9870"
+#       - "9000:9000"
+#     environment:
+#       - CLUSTER_NAME=michael_cluster
+#       - ENSURE_NAMENODE_DIR=/hadoop/dfs/name
+#       - CORE_CONF_fs_defaultFS=hdfs://0.0.0.0:9000
+#     volumes:
+#       - namenode_data:/hadoop/dfs/name
+#       - ../:/opt/cluster-workspace
+#     networks:
+#       - bigdata-net
+#     entrypoint: ["/bin/bash", "-c"]
+#     command:
+#       - |
+#         mkdir -p /opt/cluster-workspace/infra/hadoop_config
+#         echo '<?xml version="1.0"?><configuration><property><name>fs.defaultFS</name><value>hdfs://namenode:9000</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/core-site.xml
+#         echo '<?xml version="1.0"?><configuration><property><name>dfs.replication</name><value>1</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/hdfs-site.xml
+#         /entrypoint.sh /run.sh
+# 
+#   datanode:
+#     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+#     container_name: datanode
+#     restart: unless-stopped
+#     depends_on:
+#       - namenode
+#     environment:
+#       - SERVICE_PRECONDITION=namenode:9870
+#       - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+#     volumes:
+#       - ${HOME}/Big-Data-Cluster/infra/hadoop_data_local:/hadoop/dfs/data
+#     networks:
+#       - bigdata-net
