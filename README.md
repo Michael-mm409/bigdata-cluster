@@ -9,9 +9,9 @@ A self-hosted, Docker-based data platform for Big Data coursework (CSC6002) and 
 - [Quick Start](#-quick-start)
 - [Repository Architecture](#-repository-architecture)
 - [Service Map](#service-map)
-- [Custom Image — `mds-spark:3.12`](#-custom-image--mds-spark312)
 - [Configuration & Environment](#️-configuration--environment)
 - [Shell Aliases](#️-shell-aliases)
+- [Submitting Spark Jobs](#-submitting-spark-jobs)
 - [Web UI Dashboards](#-web-ui-dashboards)
 - [Utility Scripts](#-utility-scripts)
 - [Data Sync Workflow](#-data-sync-workflow)
@@ -25,8 +25,9 @@ A self-hosted, Docker-based data platform for Big Data coursework (CSC6002) and 
 # 1. Clone the repo
 git clone <repo-url> && cd Big-Data-Cluster
 
-# 2. Run the Arch Linux setup script (installs Docker, DBeaver, MongoDB Compass, mongosh)
-chmod +x infra/setup_course_env.sh && ./infra/setup_course_env.sh
+# 2. Make scripts executable and run the setup script
+chmod +x bin/* infra/*.sh
+./infra/setup_course_env.sh
 
 # 3. Copy and fill in your environment config
 cp .env.example .env && nano .env
@@ -69,10 +70,11 @@ docker compose down -v
 ```
 Big-Data-Cluster/
 │
-├── apps/
-│   └── spark-base-312/
-│       └── Dockerfile             # Custom image: Python 3.12, PySpark 3.5.1, PyTorch, JupyterLab
-│
+├──bin/
+|   └── spark-submit-course     # Wrapper for submitting Spark jobs
+|
+├──spark-conf/
+|     └── spark-defaults.conf     # Spark runtime configuration
 ├── courses/
 │   └── ISIT312/                   # Prior course (Big Data) reference scripts
 │
@@ -119,8 +121,8 @@ All services are defined in `docker-compose.yml` at the repository root and shar
 
 | Service | Container Name | Image | Role | Ports |
 |---|---|---|---|---|
-| **Spark Master** | `spark-master` | `mds-spark:3.12` (custom build) | Distributed compute coordinator | `8085` → UI, `7077` → submit |
-| **Spark Worker** | *(auto-named, ×2 replicas)* | `mds-spark:3.12` (custom build) | Compute executor — 4 cores / `${WORKER_RAM}` each | — |
+| **Spark Master** | `spark-master` | apache/spark:3.5.6 | Distributed compute coordinator | `8085` → UI, `7077` → submit |
+| **Spark Worker** | *(auto-named, ×2 replicas)* | apache/spark:3.5.6 | Compute executor — 4 cores / `${WORKER_RAM}` each | — |
 | **HDFS NameNode** | `namenode` | `bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8` | HDFS metadata, namespace, config generator | `9870` → UI, `9000` → RPC |
 | **HDFS DataNode** | `datanode` | `bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8` | HDFS block storage (bind-mount at `infra/hadoop_data_local/`) | — |
 | **MongoDB** | `course-mongodb` | `mongo:7.0` | Course lab database (bind-mount at `infra/mongo_data/`) | `27017` |
@@ -138,20 +140,23 @@ All services are defined in `docker-compose.yml` at the repository root and shar
 
 ---
 
-## 🐳 Custom Image — `mds-spark:3.12`
+## 🐳 Spark Runtime
 
-Built from `apps/spark-base-312/Dockerfile`. Used by both `spark-master` and `spark-worker`.
+The cluster uses the official Apache Spark Docker image: apache/spark:3.5.6
 
-| Layer | Component | Version |
-|---|---|---|
-| Base | Python (slim) | 3.12 |
-| Runtime | Java (OpenJDK headless) | 21 |
-| Hadoop client | Apache Hadoop (binaries only) | 3.3.6 |
-| Spark | PySpark | 3.5.1 |
-| ML stack | NumPy, Pandas, scikit-learn, SciPy, Matplotlib | latest |
-| Deep learning | PyTorch + torchvision + torchaudio | CUDA 12.1 build |
-| Notebook | JupyterLab | latest |
-| JDBC drivers | `thrift`, `jaydebeapi`, `hdfs` | — |
+The image provides:
+
+- Apache Spark 3.5.6
+- PySpark
+- Java runtime
+- Spark standalone cluster support
+
+Spark Master and Spark Worker containers share the same runtime image.
+
+The project keeps Spark configuration separate through: 
+
+spark-conf/spark-defaults.conf
+
 
 **Default CMD** (Dockerfile): starts JupyterLab on port `8888`.
 **Overridden by `docker-compose.yml`**: `spark-master` runs the Spark Master process; `spark-worker` replicas run the Spark Worker process.
@@ -235,30 +240,45 @@ alias lab-pull="~/Big-Data-Cluster/infra/sync_labs.sh --pull"
 
 > **Known issue in `zshrc_aliases.txt`:** `cluster-up` and `cluster-down` reference `~/Big-Data-Cluster/infra/docker-compose.yml`, but the compose file lives at the **repo root** (`~/Big-Data-Cluster/docker-compose.yml`). Update that path after copying the aliases.
 
-### Usage Examples
+---
+
+## 🚀 Submitting Spark Jobs
+
+The repository includes a wrapper script (`bin/spark-submit-course`) to easily execute PySpark scripts inside the cluster without manually entering `docker exec` commands.
+
+### Setup (One-time)
+
+Make sure the script is executable and added to your shell environment:
 
 ```bash
-# List HDFS root directory
-hdfs dfs -ls /
+chmod +x bin/spark-submit-course
 
-# Check HDFS disk usage
-hadoop fs -du -h /
+# Add bin to your PATH (zsh)
+echo 'export PATH="$HOME/Big-Data-Cluster/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
 
-# Submit a PySpark job from any directory
-spark-submit /opt/spark-apps/my_job.py
+## Usage & Path Mapping
+The wrapper maps your host workspace directly into the Spark container:
 
-# Open an interactive PySpark REPL
-pyspark
+Host Workspace: ${COURSE_WORKSPACE} (configured in .env)
 
-# Drop into MongoDB shell (uni_sandbox)
-mongosh
+Container Path: /opt/spark-apps
 
-# Drop into a specific database
-mongosh csc6002
+Navigate to your workspace or run scripts relative to your path:
 
-# Full cluster lifecycle with data sync
-cluster-up
-cluster-down
+``` Bash
+# Example 1: Run a script from the root of your workspace
+spark-submit-course test.py
+
+# Example 2: Run a script in a subfolder
+spark-submit-course jobs/my_job.py
+```
+
+Under the hood, the wrapper translates the path and executes:
+
+```Bash
+docker exec -it spark-master spark-submit /opt/spark-apps/jobs/my_job.py
 ```
 
 ---
@@ -283,7 +303,6 @@ All UIs are accessible from your browser once the stack is running.
 |---|---|
 | `./infra/setup_course_env.sh` | One-time machine setup: `pacman` sync, Docker, DBeaver, MongoDB Compass, `mongosh`; verifies `mds-spark:3.12` image; creates bind-mount directories |
 | `./infra/sync_labs.sh --pull` | `git pull` → ensure containers running → seed MongoDB from `data/mongodb_dumps/*.json` → push `data/` into HDFS |
-| `./infra/sync_labs.sh --pull` | `git pull` → seed containers → push data into HDFS |
 | `./infra/sync_labs.sh --push` | Export all active MongoDB collections to `data/mongodb_dumps/` → pull HDFS `/data` back to local → `git commit` + `git push` |
 | `python infra/cluster_benchmark.py` | Monte Carlo Pi estimation using 500 million samples — distributed across Spark workers |
 
@@ -357,14 +376,6 @@ cluster-down         # or: ./infra/sync_labs.sh --push
 | NVIDIA Container Toolkit | Optional — only required for GPU-accelerated PyTorch jobs |
 | 8 GB+ RAM | 16 GB recommended; tune `WORKER_RAM` in `.env` |
 | Git | Required by `sync_labs.sh` for data backup and pull |
-
-### Building the custom Spark image manually
-
-If the image is not yet cached locally:
-
-```bash
-docker build -t mds-spark:3.12 ./apps/spark-base-312
-```
 
 > The first build downloads PyTorch (CUDA 12.1 wheels — ~2 GB). Subsequent builds use the Docker layer cache.
 
