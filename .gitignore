@@ -35,3 +35,4 @@ data/*
 # Whitelist your new automated database collection dumps folder
 !data/mongodb_dumps/
 !data/mongodb_dumps/*
+.*.swp
