@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [ $# -lt 1 ]; then
+    echo "Usage: spark-submit-course <python-file> [spark-submit options]"
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+source "$PROJECT_ROOT/.env"
+
+relative_path="${PWD#$COURSE_WORKSPACE/}"
+
+script="/course/${relative_path}/$1"
+
+shift
+
+docker exec -it spark-master \
+    /opt/spark/bin/spark-submit \
+    "$script" \
+    "$@"
