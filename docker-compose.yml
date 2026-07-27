@@ -40,90 +40,43 @@ services:
 
   # --- COURSE ALIGNED: SPARK LAB PROCESSING ---
   spark-master:
-    image: mds-spark:3.12
+    image: apache/spark:3.5.6
     container_name: spark-master
     restart: unless-stopped
-    build:
-      context: ./apps/spark-base-312
-      dockerfile: Dockerfile
     ports:
       - "8085:8080"
       - "7077:7077"
     environment:
-      - SPARK_MASTER_HOST=spark-master
-      - SPARK_MASTER_PORT=7077
-      - SPARK_MASTER_WEBUI_PORT=8080
-      - SPARK_LOCAL_IP=0.0.0.0
+      - SPARK_NO_DAEMONIZE=true
     networks:
       - bigdata-net
-    command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
     volumes:
-      # 🚀 Dynamic mapping: works on any computer by reading a local variable
-      - "${COURSE_WORKSPACE}:/course/"
-
+      - "${COURSE_WORKSPACE}:/course"
+      - ./spark-conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+    command:
+      - /opt/spark/bin/spark-class
+      - org.apache.spark.deploy.master.Master
+  
   spark-worker:
-    # container_name: spark-worker  <-- Keep this commented out so you can scale!
-    restart: unless-stopped
+    image: apache/spark:3.5.6
     depends_on:
       - spark-master
-    build:
-      context: ./apps/spark-base-312
-      dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
-      - SPARK_MASTER=spark://spark-master:7077
-      - SPARK_WORKER_CORES=4
-      - SPARK_WORKER_MEMORY=${WORKER_RAM}
+      - SPARK_NO_DAEMONIZE=true
+      # - SPARK_MODE=worker
+      # - SPARK_MASTER_URL=spark://spark-master:7077
+      # - SPARK_WORKER_CORES=8
+      # - SPARK_WORKER_MEMORY=8g
     networks:
       - bigdata-net
-    deploy:
-      replicas: 2 # 🚀 AUTOMATICALLY SPAWNS 2 WORKERS ON BOTH MACHINES
-      resources:
-        limits:
-          cpus: '4.0'
-          memory: ${WORKER_RAM}
-        reservations:
-          cpus: '2.0'
-          memory: 2g
-    command: ["/usr/local/lib/python3.12/site-packages/pyspark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+    command:
+      - /opt/spark/bin/spark-class
+      - org.apache.spark.deploy.worker.Worker
+      - --cores
+      - "8"
+      - --memory
+      - "8g"
+      - spark://spark-master:7077
     volumes:
-      # 🚀 Dynamic mapping: works on any computer by reading a local variable
-      - "${COURSE_WORKSPACE}:/course/"
-
-  # --- OPTIONAL STORAGE LAYER (HADOOP CORE) ---
-#   namenode:
-#     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-#     container_name: namenode
-#     restart: unless-stopped
-#     ports:
-#       - "9870:9870"
-#       - "9000:9000"
-#     environment:
-#       - CLUSTER_NAME=michael_cluster
-#       - ENSURE_NAMENODE_DIR=/hadoop/dfs/name
-#       - CORE_CONF_fs_defaultFS=hdfs://0.0.0.0:9000
-#     volumes:
-#       - namenode_data:/hadoop/dfs/name
-#       - ../:/opt/cluster-workspace
-#     networks:
-#       - bigdata-net
-#     entrypoint: ["/bin/bash", "-c"]
-#     command:
-#       - |
-#         mkdir -p /opt/cluster-workspace/infra/hadoop_config
-#         echo '<?xml version="1.0"?><configuration><property><name>fs.defaultFS</name><value>hdfs://namenode:9000</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/core-site.xml
-#         echo '<?xml version="1.0"?><configuration><property><name>dfs.replication</name><value>1</value></property></configuration>' > /opt/cluster-workspace/infra/hadoop_config/hdfs-site.xml
-#         /entrypoint.sh /run.sh
-# 
-#   datanode:
-#     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-#     container_name: datanode
-#     restart: unless-stopped
-#     depends_on:
-#       - namenode
-#     environment:
-#       - SERVICE_PRECONDITION=namenode:9870
-#       - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-#     volumes:
-#       - ${HOME}/Big-Data-Cluster/infra/hadoop_data_local:/hadoop/dfs/data
-#     networks:
-#       - bigdata-net
+      - "${COURSE_WORKSPACE}:/course"
