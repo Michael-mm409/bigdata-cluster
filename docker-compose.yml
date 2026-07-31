@@ -3,7 +3,11 @@ networks:
     driver: bridge
 
 volumes:
+  postgres_data:
+  mongo_data:
   namenode_data:
+  datanode_data:
+  hadoop_historyserver:
 
 services:
   # --- COURSE REQUIRED: POSTGRESQL RELATIONAL DATA TIER ---
@@ -56,7 +60,7 @@ services:
     command:
       - /opt/spark/bin/spark-class
       - org.apache.spark.deploy.master.Master
-  
+
   spark-worker:
     image: apache/spark:3.5.6
     depends_on:
@@ -64,10 +68,6 @@ services:
     restart: unless-stopped
     environment:
       - SPARK_NO_DAEMONIZE=true
-      # - SPARK_MODE=worker
-      # - SPARK_MASTER_URL=spark://spark-master:7077
-      # - SPARK_WORKER_CORES=8
-      # - SPARK_WORKER_MEMORY=8g
     networks:
       - bigdata-net
     command:
@@ -80,3 +80,111 @@ services:
       - spark://spark-master:7077
     volumes:
       - "${COURSE_WORKSPACE}:/course"
+
+  # ==============================================================================
+  # OPTIONAL PROFILE: HADOOP / HDFS CLUSTER STACK
+  # (Only starts when --profile hadoop is passed)
+  # ==============================================================================
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    restart: unless-stopped
+    profiles:
+      - hadoop
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    environment:
+      - CLUSTER_NAME=csc6002-hadoop
+    env_file:
+      - ./hadoop.env
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+      - "${COURSE_WORKSPACE}:/course"
+    networks:
+      - bigdata-net
+
+  secondarynamenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: secondarynamenode
+    restart: unless-stopped
+    profiles:
+      - hadoop
+    depends_on:
+      - namenode
+    ports:
+      - "9868:9868"
+    env_file:
+      - ./hadoop.env
+    environment:
+      - HDFS_CONF_dfs_namenode_secondary_http___address=secondarynamenode:9868
+    command: ["/run.sh"]
+    networks:
+      - bigdata-net
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    restart: unless-stopped
+    profiles:
+      - hadoop
+    depends_on:
+      - namenode
+    ports:
+      - "9864:9864"
+    env_file:
+      - ./hadoop.env
+    volumes:
+      - datanode_data:/hadoop/dfs/data
+    networks:
+      - bigdata-net
+
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    restart: unless-stopped
+    profiles:
+      - hadoop
+    depends_on:
+      - namenode
+      - datanode
+    ports:
+      - "8088:8088"
+    env_file:
+      - ./hadoop.env
+    networks:
+      - bigdata-net
+
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager
+    restart: unless-stopped
+    profiles:
+      - hadoop
+    depends_on:
+      - resourcemanager
+    env_file:
+      - ./hadoop.env
+    networks:
+      - bigdata-net
+
+  historyserver:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+    container_name: historyserver
+    restart: unless-stopped
+    profiles:
+      - hadoop
+    depends_on:
+      - namenode
+      - datanode
+    ports:
+      - "8188:8188"
+    environment:
+      - HOME_DIR=/opt/hadoop-3.2.1
+    env_file:
+      - ./hadoop.env
+    volumes:
+      - hadoop_historyserver:/hadoop/yarn/timeline
+    networks:
+      - bigdata-net
