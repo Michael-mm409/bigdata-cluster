@@ -10,7 +10,7 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
 fi
 
 if [ $# -lt 1 ]; then
-    echo "Usage: spark-submit-course <python-file> [spark-submit options]"
+    echo "Usage: spark-submit <python-file> [spark-submit options]"
     exit 1
 fi
 
@@ -20,6 +20,7 @@ if [ -z "${COURSE_WORKSPACE:-}" ]; then
 fi
 
 relative_path="${PWD#$COURSE_WORKSPACE}"
+relative_path="${relative_path#/}"
 
 docker exec -it spark-master \
     /opt/spark/bin/spark-submit \

@@ -4,7 +4,6 @@ alias lab-pull="~/Big-Data-Cluster/infra/sync_labs.sh --pull"
 alias hdfs="docker exec -i namenode hdfs"
 alias hadoop="docker exec -i namenode hadoop"
 alias pyspark="docker exec -it spark-master pyspark"
-alias spark-submit="docker exec -it spark-master spark-submit"
 
 mongosh() {
     # 1. Safely extract the URI string (keeping it for reference/logging)
@@ -22,7 +21,7 @@ mongosh() {
 }
 
 cluster-up() {
-    docker compose -f ~/Big-Data-Cluster/infra/docker-compose.yml up -d
+    docker compose -f ~/Big-Data-Cluster/docker-compose.yml up -d
     ~/Big-Data-Cluster/infra/sync_labs.sh --pull
 }
 
