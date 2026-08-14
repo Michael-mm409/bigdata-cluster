@@ -44,7 +44,9 @@ services:
 
   # --- COURSE ALIGNED: SPARK LAB PROCESSING ---
   spark-master:
-    image: apache/spark:3.5.6
+    build:
+      context: ./spark
+    image: csc6002-spark:3.5.6-python3.12
     container_name: spark-master
     restart: unless-stopped
     ports:
@@ -62,7 +64,9 @@ services:
       - org.apache.spark.deploy.master.Master
 
   spark-worker:
-    image: apache/spark:3.5.6
+    build:
+      context: ./spark
+    image: csc6002-spark:3.5.6-python3.12
     depends_on:
       - spark-master
     restart: unless-stopped
@@ -105,24 +109,6 @@ services:
     networks:
       - bigdata-net
 
-  secondarynamenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    container_name: secondarynamenode
-    restart: unless-stopped
-    profiles:
-      - hadoop
-    depends_on:
-      - namenode
-    ports:
-      - "9868:9868"
-    env_file:
-      - ./hadoop.env
-    environment:
-      - HDFS_CONF_dfs_namenode_secondary_http___address=secondarynamenode:9868
-    command: ["/run.sh"]
-    networks:
-      - bigdata-net
-
   datanode:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: datanode
@@ -140,51 +126,25 @@ services:
     networks:
       - bigdata-net
 
-  resourcemanager:
-    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
-    container_name: resourcemanager
+  jupyter:
+    build:
+        context: .
+        dockerfile: jupyter/Dockerfile
+    image: csc6002-jupyter:3.5.6
+    container_name: jupyter
     restart: unless-stopped
     profiles:
-      - hadoop
-    depends_on:
-      - namenode
-      - datanode
+        - hadoop
     ports:
-      - "8088:8088"
-    env_file:
-      - ./hadoop.env
-    networks:
-      - bigdata-net
-
-  nodemanager:
-    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
-    container_name: nodemanager
-    restart: unless-stopped
-    profiles:
-      - hadoop
-    depends_on:
-      - resourcemanager
-    env_file:
-      - ./hadoop.env
-    networks:
-      - bigdata-net
-
-  historyserver:
-    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
-    container_name: historyserver
-    restart: unless-stopped
-    profiles:
-      - hadoop
-    depends_on:
-      - namenode
-      - datanode
-    ports:
-      - "8188:8188"
-    environment:
-      - HOME_DIR=/opt/hadoop-3.2.1
-    env_file:
-      - ./hadoop.env
+        - "8888:8888"
     volumes:
-      - hadoop_historyserver:/hadoop/yarn/timeline
+        - "${COURSE_WORKSPACE}:/course"
+    working_dir: /course
     networks:
-      - bigdata-net
+        - bigdata-net
+    depends_on:
+        - spark-master
+        - namenode
+        - datanode
+    environment:
+        - JUPYTER_TOKEN=csc6002

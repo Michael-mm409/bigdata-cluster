@@ -1,9 +1,21 @@
 # --- CSC6002 CLUSTER ALIASES ---
 alias lab-push="~/Big-Data-Cluster/infra/sync_labs.sh --push"
 alias lab-pull="~/Big-Data-Cluster/infra/sync_labs.sh --pull"
-alias hdfs="docker exec -i namenode hdfs"
 alias hadoop="docker exec -i namenode hadoop"
 alias pyspark="docker exec -it spark-master pyspark"
+
+hdfs() {
+    docker exec -i namenode hdfs "$@"
+}
+
+hdfs-put() {
+    local src="$1"
+    local dest="$2"
+
+    docker exec -i namenode hdfs dfs -put \
+        "file:///course/${src// /%20}" \
+        "$dest"
+}
 
 mongosh() {
     # 1. Safely extract the URI string (keeping it for reference/logging)
