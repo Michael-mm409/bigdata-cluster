@@ -148,3 +148,5 @@ services:
         - datanode
     environment:
         - JUPYTER_TOKEN=csc6002
+        - MONGO_URI=mongodb
+        - MONGO_PORT=27017

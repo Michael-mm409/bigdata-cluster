@@ -4,40 +4,50 @@ alias lab-pull="~/Big-Data-Cluster/infra/sync_labs.sh --pull"
 alias hadoop="docker exec -i namenode hadoop"
 alias pyspark="docker exec -it spark-master pyspark"
 
+unalias hdfs 2>/dev/null
+
 hdfs() {
     docker exec -i namenode hdfs "$@"
 }
 
 hdfs-put() {
-    local src="$1"
+    local filename="$1"
     local dest="$2"
 
-    docker exec -i namenode hdfs dfs -put \
-        "file:///course/${src// /%20}" \
-        "$dest"
+    if [[ -z "$filename" ]]; then
+        echo "Usage: hdfs-put <filename> [hdfs-destination]"
+        return 1
+    fi
+
+    [[ -z "$dest" ]] && dest="/" || dest="/${dest#/}"
+
+    local source="/course/${filename#/}"
+    local source_uri="file://${source// /%20}"
+
+    docker exec -i namenode \
+        hdfs dfs -put "$source_uri" "$dest"
 }
 
 mongosh() {
-    # 1. Safely extract the URI string (keeping it for reference/logging)
-    local env_uri=$(awk -F'"' '/^MONGO_URI=/ {print $2}' ~/Big-Data-Cluster/.env)
-    
-    # 2. Use docker exec to run the shell inside the existing container
-    # This assumes your container is named 'course-mongodb' as per your compose file
-    if [ -n "$1" ]; then
-        # If a db name is provided as an argument
+    if [[ -n "$1" ]]; then
         docker exec -it course-mongodb mongosh "$1"
     else
-        # Default connection
         docker exec -it course-mongodb mongosh
     fi
 }
 
 cluster-up() {
-    docker compose -f ~/Big-Data-Cluster/docker-compose.yml up -d
+    docker compose \
+        -f ~/Big-Data-Cluster/docker-compose.yml \
+        --profile hadoop up -d --scale spark-worker=2
+
     ~/Big-Data-Cluster/infra/sync_labs.sh --pull
 }
 
 cluster-down() {
     ~/Big-Data-Cluster/infra/sync_labs.sh --push
-    docker compose -f ~/Big-Data-Cluster/infra/docker-compose.yml down
+
+    docker compose \
+        -f ~/Big-Data-Cluster/docker-compose.yml \
+        --profile hadoop down
 }
