@@ -36,3 +36,4 @@ data/*
 !data/mongodb_dumps/
 !data/mongodb_dumps/*
 .*.swp
+tmp/

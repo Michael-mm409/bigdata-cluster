@@ -46,7 +46,7 @@ services:
   spark-master:
     build:
       context: ./spark
-    image: csc6002-spark:3.5.6-python3.12
+    image: localhost/csc6002-spark:3.5.9-python3.12
     container_name: spark-master
     restart: unless-stopped
     ports:
@@ -64,9 +64,7 @@ services:
       - org.apache.spark.deploy.master.Master
 
   spark-worker:
-    build:
-      context: ./spark
-    image: csc6002-spark:3.5.6-python3.12
+    image: localhost/csc6002-spark:3.5.9-python3.12
     depends_on:
       - spark-master
     restart: unless-stopped
@@ -130,15 +128,17 @@ services:
     build:
         context: .
         dockerfile: jupyter/Dockerfile
-    image: csc6002-jupyter:3.5.6
+    image: csc6002-jupyter:3.5.9
     container_name: jupyter
     restart: unless-stopped
     profiles:
         - hadoop
+
+    userns_mode: "keep-id"
     ports:
         - "8888:8888"
     volumes:
-        - "${COURSE_WORKSPACE}:/course"
+        - "${COURSE_WORKSPACE}:/course:z"
     working_dir: /course
     networks:
         - bigdata-net
